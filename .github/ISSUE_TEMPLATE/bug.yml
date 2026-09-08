@@ -1,0 +1,58 @@
+name: 버그 신고
+description: 앱이 뜻대로 동작하지 않을 때 알려 주세요.
+labels: [버그]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        사용법이 궁금하거나 잘 안 되는 이유를 물어보고 싶으시면 [질문 게시판](https://github.com/ddukbaek2/steam-file-transfer/discussions/categories/q-a)을 이용해 주세요.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 무슨 일이 있었나요
+      description: 기대한 동작과 실제 동작을 함께 적어 주시면 좋습니다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 어떻게 하면 다시 일어나나요
+      placeholder: |
+        1. 기기 목록에서 스팀덱을 누릅니다
+        2. 게임 옆 보내기 버튼을 누릅니다
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: from
+    attributes:
+      label: 보내는 기기
+      placeholder: Windows 11, 앱 0.1.1
+    validations:
+      required: true
+
+  - type: input
+    id: to
+    attributes:
+      label: 받는 기기
+      placeholder: Steam Deck (SteamOS 3.x), 앱 0.1.1
+    validations:
+      required: true
+
+  - type: textarea
+    id: status
+    attributes:
+      label: 전송 상태에 나온 문구
+      description: 앱 아래쪽 전송 상태 영역에 표시된 내용을 그대로 붙여 주세요.
+
+  - type: textarea
+    id: log
+    attributes:
+      label: 로그
+      description: |
+        SteamOS 에서는 데스크톱 모드 터미널에서 아래를 실행하면 볼 수 있습니다.
+        `journalctl --user -u steam-file-transfer -n 200 --no-pager`
+      render: text
