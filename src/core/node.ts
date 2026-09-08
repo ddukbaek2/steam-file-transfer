@@ -18,7 +18,7 @@ export interface NodeStatus {
   message: string;
 }
 
-export const APP_VERSION = '0.1.0';
+export const APP_VERSION = '0.1.1';
 
 export function localAddresses(): string[] {
   const out: string[] = [];
