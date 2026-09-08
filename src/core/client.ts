@@ -69,12 +69,12 @@ export class PeerClient {
   check(appId: string, root: PatchRoot, files: CheckItem[]): Promise<CheckResult[]> {
     return this.json('POST', `/api/games/${encodeURIComponent(appId)}/check?root=${root}`, { files }, 30 * 60 * 1000);
   }
-  /** 상대 기기 게임 폴더의 파일 목록과 해시. "받기" 의 첫 단계다. 큰 게임은 오래 걸린다. */
+  /** 다른 기기 게임 폴더의 파일 목록과 해시. 그 기기를 원본으로 삼을 때 쓴다. 큰 게임은 오래 걸린다. */
   tree(appId: string, root: PatchRoot): Promise<HashedTree> {
     return this.json('GET', `/api/games/${encodeURIComponent(appId)}/tree?root=${root}`, undefined, 30 * 60 * 1000);
   }
 
-  /** 세션을 열어 실제로 보낼 파일만 추린다. 상대는 파일 목록 전체를 해시 비교하므로 오래 걸릴 수 있다. */
+  /** 세션을 열어 실제로 보낼 파일만 추린다. 받는 기기가 파일 목록 전체를 해시 비교하므로 오래 걸릴 수 있다. */
   openSession(appId: string, root: PatchRoot, files: CheckItem[], onlyExisting: boolean): Promise<SessionInfo> {
     return this.json('POST', `/api/games/${encodeURIComponent(appId)}/session?root=${root}`, { files, onlyExisting }, 30 * 60 * 1000);
   }
@@ -121,7 +121,7 @@ export class PeerClient {
     });
   }
 
-  /** 파일 하나를 상대의 임시 폴더로 스트리밍 업로드. 수신측이 해시를 검증한다. */
+  /** 파일 하나를 받는 기기의 임시 폴더로 스트리밍 업로드. 받는 쪽이 해시를 검증한다. */
   stageFile(appId: string, root: PatchRoot, sessionId: string, relPath: string, size: number, sha256: string, stream: Readable, onProgress?: (bytes: number) => void): Promise<void> {
     return new Promise((resolve, reject) => {
       // 실패해도 소스 스트림을 반드시 닫는다. 안 그러면 파일 하나 실패할 때마다
