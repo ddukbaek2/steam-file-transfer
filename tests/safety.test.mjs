@@ -13,7 +13,9 @@ const { receiveFile, resolveWriteTarget, expandSelection } = mod;
 
 const sandboxes = [];
 function sandbox() {
-  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'sft-safe-'));
+  // macOS 의 os.tmpdir() 은 /private 아래를 가리키는 심볼릭 링크다.
+  // 코드가 실제 경로를 돌려주므로 기대값도 실제 경로여야 한다.
+  const d = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'sft-safe-')));
   sandboxes.push(d);
   return d;
 }
