@@ -1,0 +1,7 @@
+# 빈 이슈는 막고, 질문은 게시판으로 보낸다.
+# 이슈는 고쳐야 할 것만 남기고 나머지 이야기는 Discussions 에서 한다.
+blank_issues_enabled: false
+contact_links:
+  - name: 질문하기
+    url: https://github.com/ddukbaek2/steam-file-transfer/discussions/categories/q-a
+    about: 사용법이나 설치 중 막히는 부분을 물어보세요. 답변해 드립니다.

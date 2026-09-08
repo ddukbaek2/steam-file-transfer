@@ -10,6 +10,8 @@ Windows PC, Steam Deck, Steam Machine, macOS에서 동작하며 어느 기기에
 
 홈페이지: <https://ddukbaek2.com/steam-file-transfer>
 
+막히는 부분이 있으면 [질문 게시판](https://github.com/ddukbaek2/steam-file-transfer/discussions/categories/q-a)에 남겨 주세요. 동작이 잘못된 것 같으면 [버그 신고](https://github.com/ddukbaek2/steam-file-transfer/issues/new?template=bug.yml)로 알려 주시면 됩니다.
+
 ## 왜 만들었나
 
 한글패치의 대부분은 Windows용 설치 프로그램으로 배포됩니다. SteamOS에서는 그 설치 파일을 실행할 수 없습니다. 그래서 스팀덱에 한글패치를 넣으려면 데스크톱 모드로 전환하고, 패치 파일을 따로 받아 두었다가, 게임 폴더를 찾아 들어가 손으로 덮어써야 했습니다. 게임마다, 패치가 갱신될 때마다 반복입니다. 설치형 패치는 그마저도 안 됩니다.
