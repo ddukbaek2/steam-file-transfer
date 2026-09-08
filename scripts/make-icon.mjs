@@ -6,7 +6,9 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SIZE = 256;
+// macOS 의 icns 변환은 512x512 이상을 요구한다. 좌표는 256 기준으로 잡혀 있어 S 로 환산한다.
+const SIZE = 512;
+const S = SIZE / 256;
 
 function crc32(buf) {
   let c;
@@ -62,7 +64,7 @@ const set = (x, y, r, g, b, a) => {
 };
 
 // 둥근 사각형 배경 (위에서 아래로 그러데이션)
-const R = 48;
+const R = 48 * S;
 const inRounded = (x, y) => {
   const cx = Math.min(Math.max(x, R), SIZE - R);
   const cy = Math.min(Math.max(y, R), SIZE - R);
@@ -80,7 +82,7 @@ for (let y = 0; y < SIZE; y++) {
     const cx = Math.min(Math.max(x, R), SIZE - R);
     const cy = Math.min(Math.max(y, R), SIZE - R);
     const d = Math.hypot(x - cx, y - cy);
-    if (d > R - 1.5) a = Math.round(255 * Math.max(0, R - d) / 1.5);
+    if (d > R - 1.5 * S) a = Math.round(255 * Math.max(0, R - d) / (1.5 * S));
     set(x, y, r, g, b, a);
   }
 }
@@ -104,11 +106,11 @@ const head = (tipX, y, dir, size, thick) => {
 };
 
 // 위쪽 화살표: 오른쪽 방향
-bar(72, 184, 104, 13);
-head(184, 104, -1, 30, 13);
+bar(72 * S, 184 * S, 104 * S, 13 * S);
+head(184 * S, 104 * S, -1, 30 * S, 13 * S);
 // 아래쪽 화살표: 왼쪽 방향
-bar(72, 184, 152, 13);
-head(72, 152, 1, 30, 13);
+bar(72 * S, 184 * S, 152 * S, 13 * S);
+head(72 * S, 152 * S, 1, 30 * S, 13 * S);
 
 const outDir = path.join(projectRoot, 'deploy', 'steamdeck');
 fs.mkdirSync(outDir, { recursive: true });

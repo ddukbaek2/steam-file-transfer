@@ -39,8 +39,11 @@ linux:
   artifactName: "${name}-${version}-linux-${arch}.${ext}"
 mac:
   category: public.app-category.utilities
+  # 러너가 Apple Silicon 이라 arch 를 적지 않으면 arm64 만 나온다. Intel 맥도 받게 둘 다 만든다.
   target:
     - target: dmg
+      arch: [x64, arm64]
     - target: zip
+      arch: [x64, arm64]
   hardenedRuntime: false
   identity: null
