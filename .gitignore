@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-test/
+dist-probe/
+release/
+build/smoke/
+.test-config/
+.vscode/
+*.log
+.DS_Store
+Thumbs.db

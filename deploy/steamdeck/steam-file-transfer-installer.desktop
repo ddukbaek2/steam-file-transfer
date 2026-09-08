@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Steam File Transfer 설치
+Name[en]=Steam File Transfer Installer
+Comment=내부망 Steam 기기 간 한글패치 전송 도구를 설치하거나 최신 버전으로 갱신합니다
+Comment[en]=Install or update Steam File Transfer
+Exec=bash -c "curl -fsSL https://github.com/ddukbaek2/steam-file-transfer/releases/latest/download/steam-file-transfer-installer.sh | bash"
+Icon=steamdeck-gaming-return
+Terminal=true
+Type=Application
+StartupNotify=false
+Categories=Utility;

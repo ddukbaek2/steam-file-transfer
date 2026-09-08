@@ -1,0 +1,23 @@
+# 기본은 Git 이 알아서 정규화
+* text=auto eol=lf
+
+# 셸 스크립트는 반드시 LF 여야 한다.
+# CRLF 로 체크아웃되면 SteamOS 에서 "bash: \r: command not found" 로 즉시 죽는다.
+*.sh text eol=lf
+
+# systemd/데스크톱 파일도 마찬가지
+*.service text eol=lf
+*.desktop text eol=lf
+
+# Windows 전용 스크립트는 CRLF 유지
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.nsh text eol=crlf
+
+# 바이너리는 건드리지 않는다
+*.png binary
+*.ico binary
+*.icns binary
+*.zip binary
+*.tar.gz binary
+*.exe binary

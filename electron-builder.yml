@@ -1,0 +1,46 @@
+appId: dev.ddukbaek2.steam-file-transfer
+productName: Steam File Transfer
+executableName: steam-file-transfer
+directories:
+  output: release
+  buildResources: build
+# 데몬 스크립트를 순수 파일로 두기 위해 asar 비활성화 (resources/app/dist/daemon.cjs 경로 고정)
+asar: false
+files:
+  - dist/**
+  - package.json
+  - "!dist/**/*.map"
+extraResources:
+  - from: deploy/steamdeck
+    to: steamdeck
+    filter: ["**/*"]
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  include: deploy/windows/installer.nsh
+  artifactName: "${productName}-${version}-setup.${ext}"
+portable:
+  artifactName: "${productName}-${version}-portable.${ext}"
+linux:
+  category: Utility
+  # AppImage 는 mksquashfs 가 필요해 Windows 호스트에서 빌드되지 않는다.
+  # SteamOS 설치는 tar.gz + install.sh 로 하므로 기본 대상에서 뺐다.
+  # 리눅스에서 빌드할 때는 `electron-builder --linux AppImage` 로 따로 만들 수 있다.
+  target:
+    - target: tar.gz
+      arch: [x64]
+  artifactName: "${name}-${version}-linux-${arch}.${ext}"
+mac:
+  category: public.app-category.utilities
+  target:
+    - target: dmg
+    - target: zip
+  hardenedRuntime: false
+  identity: null

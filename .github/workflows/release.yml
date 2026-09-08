@@ -1,0 +1,100 @@
+# 태그(v*)를 밀면 세 OS 용 빌드를 만들어 GitHub 릴리스에 올린다.
+#
+# 릴리스에 올라가는 것:
+#   steam-file-transfer-installer.desktop   ← 덱 사용자가 받아서 더블클릭하는 파일
+#   steam-file-transfer-installer.sh        ← .desktop 이 내려받아 실행하는 부트스트랩
+#   steam-file-transfer-linux-x64.tar.gz    ← 부트스트랩이 고정 URL 로 받는 본체 (버전 없는 이름)
+#   steam-file-transfer-<버전>-linux-x64.tar.gz, Windows 설치판/무설치판, macOS dmg/zip
+#
+# 위 세 파일의 이름은 deploy/steamdeck/get.sh 와 steam-file-transfer-installer.desktop 에
+# 그대로 적혀 있다. 바꾸려면 셋을 함께 바꿔야 하고, scripts/check-deploy.mjs 가 어긋남을 잡는다.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+          - os: windows-latest
+            target: win
+          - os: macos-latest
+            target: mac
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: 타입 검사와 테스트
+        run: |
+          npm run typecheck
+          npm test
+
+      # --publish never: electron-builder 가 태그를 보고 스스로 올리려 드는 것을 막는다.
+      # 올리는 일은 아래 release 잡이 한 번에 한다.
+      - name: 빌드
+        run: npm run dist:${{ matrix.target }} -- --publish never
+
+      - name: 고정 이름 복사본 (설치 스크립트가 버전을 몰라도 받을 수 있게)
+        if: matrix.target == 'linux'
+        run: cp release/steam-file-transfer-*-linux-x64.tar.gz release/steam-file-transfer-linux-x64.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          if-no-files-found: error
+          path: |
+            release/*.tar.gz
+            release/*.exe
+            release/*.dmg
+            release/*.zip
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: 설치용 파일 추가
+        run: |
+          cp deploy/steamdeck/get.sh artifacts/steam-file-transfer-installer.sh
+          cp deploy/steamdeck/steam-file-transfer-installer.desktop artifacts/
+          ls -la artifacts
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+          body: |
+            ## Steam Deck / Steam Machine
+            1. 데스크톱 모드에서 `steam-file-transfer-installer.desktop` 을 내려받습니다.
+            2. 더블클릭합니다. "실행" 을 물으면 실행을 고릅니다.
+            3. 끝나면 PC 앱에 이 기기가 자동으로 나타납니다.
+
+            ## Windows
+            `Steam File Transfer-*-setup.exe` 를 실행합니다. 방화벽 규칙이 자동으로 등록됩니다.
+
+            ## macOS
+            `.dmg` 를 열어 응용 프로그램으로 끌어다 놓습니다. 서명이 없어 첫 실행은 우클릭 후 열기입니다.
