@@ -1,7 +1,7 @@
 {
   "name": "steam-file-transfer",
   "productName": "Steam File Transfer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "같은 내부망의 Steam 기기(SteamOS/Windows/macOS) 사이에서 게임 폴더에 패치 파일을 덮어쓰는 P2P 전송 도구",
   "license": "MIT",
   "author": "ddukbaek2",

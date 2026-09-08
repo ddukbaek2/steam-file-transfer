@@ -343,13 +343,31 @@ button.danger:hover:not(:disabled) { background: rgba(217, 79, 79, 0.15); }
 .job-head { display: flex; align-items: center; gap: 8px; }
 .job-head .jlabel { font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .job-head .jstate { font-size: 11px; color: var(--dim); white-space: nowrap; }
-.job-head .jstats { font-size: 11px; color: var(--dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.job-head .jstats { display: inline-flex; gap: 12px; font-size: 11px; color: var(--dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* 게임 이름 옆에 보낸 곳과 받는 곳을 흐리게 붙인다 */
+.jroute { margin-left: 8px; font-weight: 400; color: var(--dim); }
+/* 전송 상태 항목의 게임 아이콘. 게임 목록의 아이콘과 같은 모양으로 작게 */
+.jicon {
+  width: 20px; height: 20px; flex: none; border-radius: 4px; overflow: hidden;
+  background: var(--panel-2); display: grid; place-items: center;
+  font-size: 10px; color: var(--dim);
+}
+.jicon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 맞은 항목은 초록, 어긋난 항목은 빨강 */
+.job .jdetail .ok, .job .jdetail .ok b { color: var(--ok); }
+.job .jdetail .bad, .job .jdetail .bad b { color: var(--err); }
 .job-head .jacts { display: flex; gap: 4px; flex: none; margin-left: 4px; }
 .job-head .jacts .icon-btn { width: 24px; height: 24px; }
 .job-head .jacts .icon-btn svg { width: 14px; height: 14px; }
 .job.paused { border-left-color: var(--warn); }
 .job .bar { height: 6px; }
-.job .jmsg { font-size: 11px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 2줄: 진행률 막대와 현재 상태를 한 줄에 둔다 */
+.job .jprogress { display: flex; align-items: center; gap: 10px; }
+.job .jprogress .bar { flex: 1; min-width: 0; }
+.job .jmsg { font-size: 11px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; max-width: 50%; }
+.job .jbytes { font-size: 11px; color: var(--dim); white-space: nowrap; font-variant-numeric: tabular-nums; flex: none; }
+.job .bar.done .fill { background: var(--ok); }
+.job .bar.failed .fill, .job .bar.cancelled .fill { background: var(--err); }
 .job.failed .jmsg { color: #ff9c9c; }
 .job .jdetail { font-size: 11px; color: var(--dim); display: flex; flex-wrap: wrap; gap: 10px; }
 .job .jdetail b { color: var(--text); font-variant-numeric: tabular-nums; }

@@ -3,7 +3,7 @@
 // 화면은 셋이다. 설정은 없다. 알아서 돌아가야 한다.
 //   게임 목록   : 이 기기의 게임. 항목엔 폴더 열기뿐이다. 전송은 여기서 하지 않는다.
 //   기기 목록   : 2단계 화면. 1단계는 기기 행(맨 위 이 기기는 표시만). 다른 기기를 누르면 2단계인 그 기기의
-//                 게임 목록으로 들어가고, 항목의 덮어씌우기(이 기기 → 그 기기)나 받기(그 기기 → 이 기기)로 전송한다.
+//                 게임 목록으로 들어가고, 항목의 보내기(이 기기 → 그 기기)로 전송한다.
 //   전송 상태   : 큐에 쌓인 작업과 들어오는 수신. 항목마다 일시정지·재개·취소·제거.
 import type { InboundSession, Peer, SteamGame } from '../main/shared-types.ts';
 import type { AppState, JobDto, SftApi, TransferRequest } from '../main/ipc-types.ts';
@@ -34,9 +34,8 @@ const JOB_STATE_LABEL: Record<JobDto['state'], string> = {
 // --- 아이콘 버튼 (툴팁은 title 로) ---------------------------------------
 const ICONS = {
   folder: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
-  receive: 'M12 5v12m0 0l-5-5m5 5l5-5M5 20h14',
-  // 덮어씌우기: 뒤 문서 위로 앞 문서를 겹치고 그 안으로 화살표
-  overwrite: 'M9 3h11v11M4 9h11v11H4zM9.5 12v5m0 0l-2-2m2 2l2-2',
+  // 보내기: 선 위로 나가는 화살표 (내려받기 아이콘과 대칭)
+  upload: 'M12 19V7m0 0l-5 5m5-5l5 5M5 4h14',
   close: 'M6 6l12 12M18 6L6 18',
   back: 'M15 5l-7 7 7 7',
   pause: 'M9 5v14M15 5v14',
@@ -164,10 +163,15 @@ interface GameListOptions {
 }
 
 function loadIcon(deviceId: string, g: SteamGame, into: HTMLElement): void {
-  const key = `${deviceId}|${g.appId}`;
+  loadIconById(deviceId, g.appId, into);
+}
+
+/** 앱 ID 만 아는 곳(전송 상태 항목)에서도 아이콘을 그린다 */
+function loadIconById(deviceId: string, appId: string, into: HTMLElement): void {
+  const key = `${deviceId}|${appId}`;
   let p = iconCache.get(key);
   if (!p) {
-    p = sft.gameIcon(deviceId, g.appId).catch(() => null);
+    p = sft.gameIcon(deviceId, appId).catch(() => null);
     iconCache.set(key, p);
   }
   void p.then((url) => {
@@ -354,12 +358,12 @@ function renderDeviceGames(list: HTMLElement, p: Peer): void {
   nav.append(iconBtn('back', '기기 목록으로', () => { state.openDevice = null; renderDevices(); }), nm, osBadge(p.os));
   list.append(nav);
 
-  if (v.loading) {
+  if (v.loading && !v.games) {
     const h = document.createElement('div');
     h.className = 'hint';
     h.textContent = '게임 목록을 불러오는 중…';
     list.append(h);
-  } else if (v.error) {
+  } else if (v.error && !v.games) {
     const h = document.createElement('div');
     h.className = 'hint';
     h.style.color = 'var(--err)';
@@ -372,10 +376,9 @@ function renderDeviceGames(list: HTMLElement, p: Peer): void {
       deviceId: p.id,
       games: v.games ?? [],
       search: v.search,
-      // 받기: 그 기기의 파일을 이 기기에. 덮어씌우기: 이 기기의 파일을 그 기기에
+      // 이 기기의 파일을 그 기기에 쓴다. 반대 방향은 그 기기에서 하면 된다.
       actions: (g) => [
-        iconBtn('receive', '이 기기로 받기', () => void receiveFrom(p, g)),
-        iconBtn('overwrite', `현재 기기의 파일을 ${p.name} 에 덮어씁니다`, () => void overwriteTo(p, g), 'primary'),
+        iconBtn('upload', `현재 기기의 파일을 ${p.name} 에 덮어씁니다`, () => void overwriteTo(p, g), 'primary'),
       ],
     });
     list.append(searchBox(v.search, '게임 이름으로 검색', (val) => { v.search = val; draw(); }), listEl);
@@ -388,7 +391,7 @@ async function openDevice(p: Peer): Promise<void> {
   state.openDevice = p.id;
   renderDevices();
   const v = viewFor(deviceKey(p));
-  if (!v.games && !v.loading) await loadDeviceGames(p);
+  if (!v.loading) await loadDeviceGames(p);
 }
 
 async function loadDeviceGames(p: Peer): Promise<void> {
@@ -414,7 +417,7 @@ function findMatch(games: SteamGame[] | null, target: SteamGame): SteamGame | un
   return games.find((g) => g.appId === target.appId);
 }
 
-// --- 받기 / 덮어씌우기 -------------------------------------------------
+// --- 보내기 -------------------------------------------------------------
 
 /** 이 기기의 파일로 그 기기의 같은 게임을 덮어쓴다 */
 async function overwriteTo(p: Peer, g: SteamGame): Promise<void> {
@@ -425,27 +428,11 @@ async function overwriteTo(p: Peer, g: SteamGame): Promise<void> {
     return;
   }
   await enqueue({
-    source: { deviceId: 'self', appId: mine.appId, root: 'game' },
+    source: { deviceId: 'self', appId: mine.appId, root: 'game', deviceName: state.self?.name ?? '이 기기' },
     targets: [{ deviceId: p.id, appId: g.appId, root: 'game', deviceName: p.name }],
     label: `${g.name} → ${p.name}`,
     gameName: g.name,
     direction: 'send',
-  });
-}
-
-async function receiveFrom(p: Peer, g: SteamGame): Promise<void> {
-  if (!state.mineLoaded) await loadMine();
-  const mine = findMatch(state.mine, g);
-  if (!mine) {
-    await msgBox('이 기기에 게임이 없습니다', `"${g.name}" 이(가) 이 기기에 없습니다. 먼저 Steam 에서 설치한 뒤 받으세요.`);
-    return;
-  }
-  await enqueue({
-    source: { deviceId: p.id, appId: g.appId, root: 'game', deviceName: p.name },
-    targets: [{ deviceId: 'self', appId: mine.appId, root: 'game' }],
-    label: `${p.name} 의 ${g.name} → 이 기기`,
-    gameName: g.name,
-    direction: 'receive',
   });
 }
 
@@ -463,7 +450,7 @@ function renderJobs(): void {
   const list = $('jobList');
   list.replaceChildren();
   if (state.jobs.length === 0) {
-    list.innerHTML = '<div class="empty">기기 목록에서 받기나 덮어씌우기를 누르면 여기에 쌓여 차례로 진행됩니다.</div>';
+    list.innerHTML = '<div class="empty">기기 목록에서 보내기를 누르면 여기에 쌓여 차례로 진행됩니다.</div>';
     return;
   }
 
@@ -474,20 +461,33 @@ function renderJobs(): void {
   for (const j of sorted) {
     const row = document.createElement('div');
     row.className = `job ${j.state}`;
+    row.dataset.jobId = j.id;
 
     const head = document.createElement('div');
     head.className = 'job-head';
+    if (j.appId) {
+      const icon = document.createElement('span');
+      icon.className = 'jicon';
+      icon.textContent = (j.gameName || '?').slice(0, 1);
+      loadIconById('self', j.appId, icon);
+      head.append(icon);
+    }
     const label = document.createElement('span');
     label.className = 'jlabel';
-    label.textContent = `${j.direction === 'send' ? '↑' : '↓'} ${j.label}`;
+    const gname = document.createElement('b');
+    gname.textContent = j.gameName || j.label;
+    label.append(gname);
+    if (j.fromName && j.toName) {
+      const route = document.createElement('span');
+      route.className = 'jroute';
+      route.textContent = `${j.fromName} → ${j.toName}`;
+      label.append(route);
+    }
     label.title = j.label;
-    const stats = document.createElement('span');
-    stats.className = 'jstats';
-    if (j.filesTotal > 0) stats.textContent = `${j.filesDone}/${j.filesTotal} · ${fmtBytes(j.doneBytes)} / ${fmtBytes(j.totalBytes)}`;
     const st = document.createElement('span');
     st.className = 'jstate';
     st.textContent = j.paused ? '일시정지' : JOB_STATE_LABEL[j.state];
-    head.append(label, stats, st);
+    head.append(label, st);
     const running = j.state !== 'done' && j.state !== 'failed' && j.state !== 'cancelled';
     // 항목별 제어: 대기·전송 중엔 일시정지/재개와 취소, 끝난 것은 제거
     const acts = document.createElement('span');
@@ -505,45 +505,70 @@ function renderJobs(): void {
     if (j.paused) row.classList.add('paused');
     row.append(head);
 
-    if (running && !j.paused) {
-      const bar = document.createElement('div');
-      bar.className = 'bar';
-      const fill = document.createElement('div');
-      fill.className = 'fill';
-      const ratio = j.totalBytes > 0 ? j.doneBytes / j.totalBytes : (j.state === 'committing' || j.state === 'verifying' ? 1 : 0);
-      fill.style.width = `${Math.round(Math.min(1, ratio) * 100)}%`;
-      bar.append(fill);
-      row.append(bar);
-    }
-
-    const msg = document.createElement('div');
+    // --- 2줄: 진행률과 현재 상태 -----------------------------------------
+    const prog = document.createElement('div');
+    prog.className = 'jprogress';
+    const bar = document.createElement('div');
+    bar.className = `bar ${j.state}`;
+    const fill = document.createElement('div');
+    fill.className = 'fill';
+    const ratio = running
+      ? (j.totalBytes > 0 ? j.doneBytes / j.totalBytes : (j.state === 'committing' || j.state === 'verifying' ? 1 : 0))
+      : 1;
+    fill.style.width = `${Math.round(Math.min(1, ratio) * 100)}%`;
+    bar.append(fill);
+    const msg = document.createElement('span');
     msg.className = 'jmsg';
     msg.textContent = j.message;
     msg.title = j.message;
-    row.append(msg);
+    prog.append(bar, msg);
+    if (j.totalBytes > 0) {
+      const bytes = document.createElement('span');
+      bytes.className = 'jbytes';
+      bytes.textContent = running
+        ? `${fmtBytes(j.doneBytes)} / ${fmtBytes(j.totalBytes)}`
+        : fmtBytes(j.totalBytes);
+      prog.append(bytes);
+    }
+    row.append(prog);
 
-    if (!running && j.targets.length > 0) {
+    // --- 3줄: 파일 분류별 개수 -------------------------------------------
+    const t0 = j.targets[0];
+    const failed = j.failedFiles + j.commitFailed;
+    const mismatched = j.verify ? j.verify.differ + j.verify.missing : null;
+    if (t0 || j.filesTotal > 0) {
       const detail = document.createElement('div');
       detail.className = 'jdetail';
-      const cell = (k: string, v: string): HTMLSpanElement => {
+      const cell = (k: string, v: number, tone?: 'ok' | 'bad'): HTMLSpanElement => {
         const s = document.createElement('span');
+        if (tone) s.className = tone;
         const b = document.createElement('b');
-        b.textContent = v;
+        b.textContent = `${v}개`;
         s.append(`${k} `, b);
         return s;
       };
-      const t = j.targets[0];
-      if (t.error) {
+      if (t0?.error) {
         const e = document.createElement('span');
-        e.style.color = 'var(--err)';
-        e.textContent = t.error;
+        e.className = 'bad';
+        e.textContent = t0.error;
         detail.append(e);
       } else {
-        detail.append(cell('전송', `${t.toSend.length}개`), cell('동일해서 건너뜀', `${t.skippedSame}개`), cell('새 파일', `${t.newFiles}개`));
-        if (t.alreadyStaged > 0) detail.append(cell('이어받기', `${t.alreadyStaged}개`));
-        if (j.verify) detail.append(cell('검증 동일', `${j.verify.same}개`), cell('다름', `${j.verify.differ}개`));
+        if (t0) detail.append(cell('전체 파일', t0.skippedSame + t0.toSend.length));
+        detail.append(cell('보낼 파일', t0 ? t0.toSend.length : j.filesTotal));
+        detail.append(cell('보낸 파일', j.filesDone));
+        // 문제를 세는 항목은 있을 때만 빨강으로 보여 준다.
+        // 0개를 초록으로 칠하면 이름과 색이 반대로 읽힌다.
+        if (failed > 0) detail.append(cell('실패한 파일', failed, 'bad'));
+        if (mismatched !== null && mismatched > 0) detail.append(cell('검증에서 어긋난 파일', mismatched, 'bad'));
+        if (j.unreadable.length > 0) detail.append(cell('읽지 못한 파일', j.unreadable.length, 'bad'));
+        // 초록은 실제로 잘된 것에만 붙인다.
+        if (!running && failed === 0 && j.unreadable.length === 0 && mismatched === 0) {
+          const ok = document.createElement('span');
+          ok.className = 'ok';
+          ok.textContent = '검증 통과';
+          detail.append(ok);
+        }
       }
-      if (j.unreadable.length > 0) detail.append(cell('읽지 못해 제외', `${j.unreadable.length}개`));
       row.append(detail);
     }
     list.append(row);
@@ -561,13 +586,18 @@ function renderInbound(): void {
     row.className = `inb ${s.state}`;
     const name = document.createElement('span');
     name.className = 'iname';
-    name.textContent = `↓ ${s.gameName} ← ${s.from}`;
+    const iname = document.createElement('b');
+    iname.textContent = s.gameName;
+    const iroute = document.createElement('span');
+    iroute.className = 'jroute';
+    iroute.textContent = `${s.from} → 이 기기`;
+    name.append(iname, iroute);
     const meta = document.createElement('span');
     meta.className = 'imeta';
-    meta.textContent = s.state === 'receiving' ? `받는 중 ${s.received}/${s.needed} · ${fmtBytes(s.bytes)}`
+    meta.textContent = s.state === 'receiving' ? `받는 중 ${s.received} / ${s.needed}, ${fmtBytes(s.bytes)}`
       : s.state === 'committing' ? '교체 중'
-      : s.state === 'done' ? `완료 · ${s.message ?? ''}`
-      : `실패 · ${s.message ?? ''}`;
+      : s.state === 'done' ? `완료 ${s.message ?? ''}`.trim()
+      : `실패 ${s.message ?? ''}`.trim();
     row.append(name, meta);
     list.append(row);
   }
@@ -626,6 +656,13 @@ function bind(): void {
     const s = await sft.getState();
     state.peers = s.peers;
     renderDevices();
+    // 기기 목록을 열어 둔 상태라면 그 기기의 게임 목록도 다시 받는다.
+    // 상대 기기에서 게임을 새로 설치했을 때 앱을 다시 켜지 않아도 되게 한다.
+    const open = state.openDevice;
+    if (open) {
+      const p = allDevices().find((d) => !d.self && d.id === open);
+      if (p) await loadDeviceGames(p);
+    }
   };
   $('btnClearJobs').onclick = () => void sft.clearFinishedJobs();
   document.addEventListener('keydown', (e) => {

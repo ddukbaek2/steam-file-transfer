@@ -29,7 +29,7 @@ trace('스크립트 진입');
 // --- 가짜 기기 ----------------------------------------------------------
 // 별도 데몬을 하나 띄워 기기 목록 2단계, 자체 메시지 상자, 덮어씌우기 전송까지 실제로 돌려 본다.
 // 가짜 라이브러리에는 이 기기의 제일 작은 게임과 같은 이름의 빈 폴더(덮어씌우기 대상)와
-// 이 기기에 없는 폴더 하나(받기를 누르면 "이 기기에 게임이 없습니다" 가 떠야 한다)를 둔다.
+// 이 기기에 없는 폴더 하나(보내기를 누르면 "이 기기에 게임이 없습니다" 가 떠야 한다)를 둔다.
 // 쓰기는 전부 임시 폴더 안에서만 일어난다. 이 기기의 실제 게임 폴더는 읽기만 한다.
 const PEER_PORT = 45111;
 let peer = null;
@@ -317,12 +317,12 @@ async function run() {
       if (job && ['done', 'failed', 'cancelled'].includes(job.state)) break;
     }
     await wait(400);
-    const row = [...document.querySelectorAll('#jobList .job')].find((r) => r.querySelector('.jlabel')?.textContent.includes('스모크'));
+    const row = document.querySelector('#jobList .job[data-job-id="' + id + '"]');
     const btns = row ? [...row.querySelectorAll('.jacts .icon-btn')].map((b) => b.title) : [];
     row?.querySelector('.icon-btn[title="기록에서 제거"]')?.click();
     await wait(400);
     const remaining = (await window.sft.jobs()).some((j) => j.id === id);
-    const rowGone = ![...document.querySelectorAll('#jobList .jlabel')].some((l) => l.textContent.includes('스모크'));
+    const rowGone = !document.querySelector('#jobList .job[data-job-id="' + id + '"]');
     return { skipped: false, state: job?.state, message: job?.message, shown: !!row, btns, remaining, rowGone };
   })()`);
 
@@ -352,6 +352,7 @@ async function run() {
       nav: document.querySelectorAll('#deviceList .device-nav').length,
       navName: document.querySelector('#deviceList .device-nav .dname')?.textContent ?? null,
       receive: document.querySelectorAll('#deviceList .gitem .icon-btn[title="이 기기로 받기"]').length,
+      buttonsPerRow: [...document.querySelectorAll('#deviceList .gitem')].map((r) => r.querySelectorAll('.icon-btn').length),
       overwrite: document.querySelectorAll('#deviceList .gitem .icon-btn[title*="덮어씁니다"]').length,
       folder: document.querySelectorAll('#deviceList .gitem .icon-btn[title="폴더 열기"]').length,
       overwriteTitle: document.querySelector('#deviceList .gitem .icon-btn[title*="덮어씁니다"]')?.title ?? null,
@@ -360,12 +361,12 @@ async function run() {
   })()`);
   await shot('gui-peer-games.png');
 
-  // 이 기기에 없는 게임을 받으려 하면 OS 대화상자가 아니라 자체 메시지 상자
+  // 이 기기에 없는 게임을 보내려 하면 OS 대화상자가 아니라 자체 메시지 상자
   const msgOpen = await win.webContents.executeJavaScript(`(async () => {
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     const row = [...document.querySelectorAll('#deviceList .gitem')].find((r) => r.querySelector('.gname')?.textContent === 'SmokeOnlyGame');
     if (!row) return { found: false };
-    row.querySelector('.icon-btn[title="이 기기로 받기"]').click();
+    row.querySelector('.icon-btn[title*="덮어씁니다"]').click();
     await wait(400);
     return { found: true, open: !document.getElementById('modalMsg').hidden, title: document.getElementById('msgTitle').textContent };
   })()`);
@@ -396,7 +397,7 @@ async function run() {
         if (job && ['done', 'failed', 'cancelled'].includes(job.state)) break;
         await wait(250);
       }
-      const row = [...document.querySelectorAll('#jobList .job')].find((r) => r.querySelector('.jlabel')?.textContent.includes('smoke-peer'));
+      const row = job ? document.querySelector('#jobList .job[data-job-id="' + job.id + '"]') : null;
       return job ? {
         state: job.state, message: job.message, filesDone: job.filesDone, filesTotal: job.filesTotal,
         committed: job.committed, failedFiles: job.failedFiles, verify: job.verify,
@@ -460,14 +461,15 @@ async function run() {
     ['끌면 비율이 바뀌고 왼쪽이 넓어짐', splitResult.during > splitResult.before && splitResult.leftWidth > splitResult.rightWidth],
     ['비율 기억 후 더블클릭으로 복귀', splitResult.saved?.x > 0.5 && splitResult.restored === 0.5],
     ['자체 메시지 상자 존재', probe.msgBox === 1],
-    ['작업 큐 비어 있음 안내', jobs.length > 0 || jobListText.includes('받기나 덮어씌우기')],
+    ['작업 큐 비어 있음 안내', jobs.length > 0 || jobListText.includes('보내기를 누르면')],
     ['작업 큐/수신 IPC', Array.isArray(jobs) && Array.isArray(inbound)],
     ['끝난 작업엔 제거 버튼만, 누르면 기록에서 사라짐', jobCtl.skipped || (jobCtl.state === 'failed' && jobCtl.shown && jobCtl.btns.length === 1 && jobCtl.btns[0] === '기록에서 제거' && jobCtl.remaining === false && jobCtl.rowGone)],
     ['가짜 기기가 기기 목록에 나타남', peerSeen && peerTest.found],
     ['기기를 누르면 2단계 (뒤로 가기 + 이름 + 게임 목록)', peerTest.found && peerTest.nav === 1 && peerTest.navName === 'smoke-peer' && peerTest.games >= 1 && peerTest.deviceRows === 0],
-    ['2단계 행엔 받기·덮어씌우기만 (폴더 열기 없음)', peerTest.found && peerTest.receive === peerTest.games && peerTest.overwrite === peerTest.games && peerTest.folder === 0],
+    ['2단계 행엔 보내기 하나만 (받기·폴더 열기 없음)', peerTest.found && peerTest.receive === 0 && peerTest.overwrite === peerTest.games && peerTest.folder === 0
+      && peerTest.buttonsPerRow.every((n) => n === 1)],
     ['덮어씌우기 툴팁 문구', (peerTest.overwriteTitle ?? '').includes('현재 기기의 파일을 smoke-peer 에 덮어씁니다')],
-    ['없는 게임 받기 → 자체 메시지 상자', msgOpen.found && msgOpen.open && msgOpen.title === '이 기기에 게임이 없습니다' && msgClosed === true],
+    ['없는 게임 보내기 → 자체 메시지 상자', msgOpen.found && msgOpen.open && msgOpen.title === '이 기기에 게임이 없습니다' && msgClosed === true],
     ['덮어씌우기 전송 완료 (파일 도착·교체·검증)', xfer === null || (xfer.state === 'done' && xfer.diskFiles > 0 && xfer.committed === xfer.diskFiles && xfer.failedFiles === 0 && xfer.verify?.differ === 0 && xfer.stagingLeft === 0)],
     ['끝난 전송 항목엔 제거 버튼', xfer === null || (xfer.rowButtons?.length === 1 && xfer.rowButtons[0] === '기록에서 제거')],
     ['뒤로 가기로 1단계 복귀', backTest.nav === 0 && backTest.devices >= 2],

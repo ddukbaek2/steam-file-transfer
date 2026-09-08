@@ -243,6 +243,9 @@ function enqueue(req: TransferRequest): string {
     req,
     label: req.label,
     gameName: req.gameName,
+    appId: req.source.appId,
+    fromName: req.source.deviceName ?? '이 기기',
+    toName: req.targets.map((t) => t.deviceName ?? '이 기기').join(', '),
     direction: req.direction,
     state: 'queued',
     paused: false,
@@ -330,7 +333,7 @@ async function runJob(job: Job): Promise<void> {
       newFiles: t.newFiles, bytes: t.bytes,
     }));
     job.unreadable = plan.unreadable;
-    onEvent({ kind: 'planned', summary: plan.targets.map((t) => t.error ? `${t.label}: ${t.error}` : `${t.label}: ${t.toSend.length}개 전송, ${t.skippedSame}개 동일`).join(' · ') });
+    onEvent({ kind: 'planned', summary: plan.targets.map((t) => t.error ? `${t.label}: ${t.error}` : `${t.label}: ${t.toSend.length}개 전송, ${t.skippedSame}개 동일`).join(', ') });
     node.log(`동기화 시작: ${job.label}`);
 
     if (job.abort.signal.aborted) throw new Error('사용자가 중단했습니다');
@@ -351,17 +354,18 @@ async function runJob(job: Job): Promise<void> {
       job.message = '중단됨. 받아 둔 파일은 남아 있어 다시 시도하면 이어받습니다.';
     } else if (allTargetsFailed) {
       job.state = 'failed';
-      job.error = plan.targets.map((t) => t.error).join(' · ');
+      job.error = plan.targets.map((t) => t.error).join(', ');
       job.message = job.error;
     } else if (result.failed > 0 || result.commitFailed > 0) {
       job.state = 'failed';
-      job.message = `파일 ${result.failed}개를 보내지 못했거나 교체 ${result.commitFailed}개가 실패했습니다. 다시 시도하면 이어받습니다.`;
+      job.message = `파일 ${result.failed + result.commitFailed}개가 반영되지 않았습니다. 게임이 실행 중이면 종료한 뒤 다시 보내세요. 이미 받아 둔 파일은 건너뜁니다.`;
     } else {
       job.state = 'done';
       const v = result.verify;
       job.message = result.files === 0 && result.committed === 0
         ? '이미 같은 상태입니다.'
-        : `완료: ${result.files}개 전송, ${result.committed}개 교체` + (v ? ` · 검증 동일 ${v.same}개${v.differ ? `, 다름 ${v.differ}개` : ''}${v.missing ? `, 없음 ${v.missing}개` : ''}` : '');
+        : `파일 ${result.files}개를 보냈습니다.`
+          + (v ? (v.differ || v.missing ? ' 검증에서 맞지 않는 파일이 나왔습니다.' : ' 전체 검증을 통과했습니다.') : '');
     }
     node.log(`동기화 끝: ${job.label} — ${job.message}`);
   } catch (e) {

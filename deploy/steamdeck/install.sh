@@ -160,7 +160,8 @@ if systemctl --user is-active --quiet "$APP_ID.service"; then
   IP="$(ip -4 -o addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | paste -sd, -)"
   info "설치 완료. 수신 대기 중입니다."
   echo
-  echo "  기기 이름 : $(hostname)"
+  # SteamOS 에는 hostname 명령이 없을 수 있다. bash 가 채워 주는 값을 먼저 쓴다.
+  echo "  기기 이름 : ${HOSTNAME:-$(uname -n)}"
   echo "  주소      : ${IP:-알 수 없음}:$HTTP_PORT"
   echo "  상태 확인 : systemctl --user status $APP_ID"
   echo "  로그 보기 : journalctl --user -u $APP_ID -f"
