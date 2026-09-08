@@ -657,7 +657,7 @@ function bind(): void {
     state.peers = s.peers;
     renderDevices();
     // 기기 목록을 열어 둔 상태라면 그 기기의 게임 목록도 다시 받는다.
-    // 상대 기기에서 게임을 새로 설치했을 때 앱을 다시 켜지 않아도 되게 한다.
+    // 다른 기기에서 게임을 새로 설치했을 때 앱을 다시 켜지 않아도 되게 한다.
     const open = state.openDevice;
     if (open) {
       const p = allDevices().find((d) => !d.self && d.id === open);
