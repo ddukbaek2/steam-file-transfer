@@ -43,6 +43,12 @@ export interface JobDto {
   id: string;
   label: string;
   gameName: string;
+  /** Steam 앱 ID. 목록에 게임 아이콘을 그리는 데 쓴다 */
+  appId?: string;
+  /** 보내는 기기 이름. 기록에서 복원한 예전 작업에는 없을 수 있다 */
+  fromName?: string;
+  /** 받는 기기 이름 */
+  toName?: string;
   direction: 'send' | 'receive';
   state: JobState;
   /** 일시정지됨. 대기 상태로 큐에 남아 있고 재개하기 전에는 시작하지 않는다 */
