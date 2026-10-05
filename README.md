@@ -8,7 +8,7 @@ Windows PC, Steam Deck, Steam Machine, macOS에서 동작하며 어느 기기에
    같은 공유기 아래에서 서로를 자동으로 찾고, 게임을 고르면 바뀐 파일만 넘어갑니다
 ```
 
-홈페이지: <https://ddukbaek2.com/steam-file-transfer>
+홈페이지: <https://ddukbaek2.com/publish/steam-file-transfer>
 
 막히는 부분이 있으면 [질문 게시판](https://github.com/ddukbaek2/steam-file-transfer/discussions/categories/q-a)에 남겨 주세요. 동작이 잘못된 것 같으면 [버그 신고](https://github.com/ddukbaek2/steam-file-transfer/issues/new?template=bug.yml)로 알려 주시면 됩니다.
 
